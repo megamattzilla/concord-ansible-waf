@@ -1,0 +1,28 @@
+---
+##Example group vars to override all.yml vars ##
+## export_config.yml vars ##
+security_policies:
+  - name: "asm.appA"
+    repo: "f5PublicConfigCommon"
+    partition: "Common"
+  - name: "asm.appB"
+    repo: "f5PublicConfigCommon"
+    partition: "Common"
+
+##export_config.yml vars##
+GIT_REPO:    
+  - name: "f5PublicConfigCommon" 
+    url: "git@github.com:megamattzilla/f5PublicConfigCommon.git"
+    #Path to SSH key created by concord flow
+    key: "{{ lookup('file','/workspace/{{ SSH_KEY_PATH }}') }}"
+    #specific directory within base path to place this repo
+    git_repo_path: "{{ GIT_REPO_BASE_PATH }}/f5PublicConfigCommon"
+    #version tag or branch to clone. you can also clone main
+    version: "main"
+    #Optional: Username to use for git push operations
+    git_username: "git_user"
+    #Optional: Email address to use for git push operations
+    git_email: "exampleuser@example.com"
+    #Optional: Commit message for git push operations
+    git_msg: "testing asm policy update"
+#Multiple Repositories can be loaded by adding another - name: reference with all parameters above. 

@@ -1,0 +1,7 @@
+# file: all.yml
+- import_playbook: install_atc_rpm.yml
+- import_playbook: do.yml
+- import_playbook: import_custom_asm_signatures.yml
+- import_playbook: import_attack_signature_version.yml
+- import_playbook: import_ltm_config.yml
+- import_playbook: as3.yml

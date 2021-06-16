@@ -1,0 +1,406 @@
+{
+	"info": {
+		"_postman_id": "cddc895a-4ba6-40e1-b81c-9e75cc460932",
+		"name": "Concord",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "JSON Store (Dont use yet- experimental)",
+			"item": [
+				{
+					"name": "List JSON Store",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/jsonstore",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"jsonstore"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List JSON Store Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/jsonstore/ansiblestuff/item",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"jsonstore",
+								"ansiblestuff",
+								"item"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create JSON Store Items",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": {\n        \"ipv4\": {\n            \"extaddress\": \"10.10.238.8\",\n            \"mgmtmacaddress\": \"00-0D-3A-EC-4C-44\"\n        },\n        \"location\": \"scus\",\n        \"mgmtaddress\": \"10.10.232.7\",\n        \"environment\": \"dev\"\n    },\n    \"host\": \"bigip-waf-01\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/jsonstore/ansiblestuff/item/bigip-waf-01",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"jsonstore",
+								"ansiblestuff",
+								"item",
+								"bigip-waf-01"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Show JSON Store Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/jsonstore/ansiblestuff/item/bigip-waf-01",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"jsonstore",
+								"ansiblestuff",
+								"item",
+								"bigip-waf-01"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Inventory (Use these!)",
+			"item": [
+				{
+					"name": "List Inventories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Inventory Query",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory/ansiblestuff/query",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory",
+								"ansiblestuff",
+								"query"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Inventories",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "  {\n    \"name\": \"newansibleinventory\",\n    \"orgId\": \"0fac1b18-d179-11e7-b3e7-d7df4543ed4f\",\n    \"orgName\": \"Default\",\n    \"visibility\": \"PUBLIC\",\n    \"owner\": {\n      \"id\": \"230c5c9c-d9a7-11e6-bcfd-bb681c07b26c\",\n      \"username\": \"Admin\"\n         }\n  }\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Inventories Query #1",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "SELECT CAST(json_build_object('host', item_data->'host') as varchar) FROM inventory_data;",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory/ansibleinv/query/ansiblequery",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory",
+								"ansibleinv",
+								"query",
+								"ansiblequery"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Inventories Query #2 All",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "SELECT CAST(item_data as varchar) FROM inventory_data;",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory/ansibleinv/query/ansiblequery2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory",
+								"ansibleinv",
+								"query",
+								"ansiblequery2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run Inventories Query",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "  SELECT CAST(json_build_object('host', item_data->'host') as varchar) FROM inventory_data;\n",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory/ansiblestuf/query/testquery/exec",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory",
+								"ansiblestuf",
+								"query",
+								"testquery",
+								"exec"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create inventory Store data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": {\n        \"ipv4\": {\n            \"extaddress\": \"10.10.238.8\",\n            \"mgmtmacaddress\": \"00-0D-3A-EC-4C-44\"\n        },\n        \"location\": \"scus\",\n        \"mgmtaddress\": \"10.10.232.7\",\n        \"environment\": \"dev\"\n    },\n    \"host\": \"bigip-waf-01\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{mgmt_port}}/api/v1/org/Default/inventory/ansibleinv/data/bigip-waf-01",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{mgmt_port}}",
+							"path": [
+								"api",
+								"v1",
+								"org",
+								"Default",
+								"inventory",
+								"ansibleinv",
+								"data",
+								"bigip-waf-01"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "List User ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://{{host}}:{{mgmt_port}}/api/v1/user/admin",
+					"protocol": "http",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{mgmt_port}}",
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"admin"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "key",
+				"value": "Authorization",
+				"type": "string"
+			},
+			{
+				"key": "value",
+				"value": "{{concordToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

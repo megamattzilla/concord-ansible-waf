@@ -1,0 +1,60 @@
+- name: Import BIG-IP.CONF Configuration
+  hosts: ansiblegroup
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Pull Git Repo
+      run_once: true
+      include_role:
+        name: ansible-git
+        tasks_from: pull      
+      with_items: "{{ GIT_REPO }}"
+
+    - name: Find .conf files
+      find:
+        paths: "{{ GIT_REPO_BASE_PATH }}"
+        patterns: '*.conf'
+        recurse: yes
+      register: findOutput
+            
+    - name: Creates confFiles directory to place .conf files
+      file:
+        path: "{{ GIT_REPO_BASE_PATH }}/confFiles"
+        state: directory
+
+    - name: Copy the .conf files into confFiles
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ GIT_REPO_BASE_PATH }}/confFiles"
+      with_items: "{{ findOutput.files }}"
+
+    - name: List .conf files to be loaded
+      find:
+        paths: "{{ GIT_REPO_BASE_PATH }}/confFiles"
+        recurse: yes
+
+    - name: Combine .conf files into single .conf file
+      assemble:
+        src: "{{ GIT_REPO_BASE_PATH }}/confFiles"
+        dest: "{{ GIT_REPO_BASE_PATH }}/confFiles/bigip.conf"
+
+    - name: Load bigip.conf configuration
+      bigip_config:
+        merge_content: "{{ lookup('file', '{{ GIT_REPO_BASE_PATH }}/confFiles/bigip.conf' ) }}"
+        provider: "{{ provider }}"
+      delegate_to: localhost
+
+    - name: Save TMSH configuration
+      bigip_config:
+        save: yes 
+        provider: "{{ provider }}"
+      delegate_to: localhost

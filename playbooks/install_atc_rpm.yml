@@ -1,0 +1,32 @@
+---
+- name: ATC Install
+  hosts: ansiblegroup
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Install DO
+      bigip_lx_package:
+        package: "{{ do_path }}"
+        provider: "{{ provider }}"
+      delegate_to: localhost
+    
+    - name: Install AS3
+      bigip_lx_package:
+        package: "{{ as3_path }}"
+        provider: "{{ provider }}"
+      delegate_to: localhost
+
+    - name: Install TS
+      bigip_lx_package:
+        package: "{{ ts_path }}"
+        provider: "{{ provider }}"
+      delegate_to: localhost

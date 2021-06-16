@@ -1,0 +1,57 @@
+- name: Import ASM Custom Signatures .xml file
+  hosts: ansiblegroup
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Pull Git Repo
+      run_once: true
+      include_role:
+        name: ansible-git
+        tasks_from: pull      
+      with_items: "{{ SIGNATURE_GIT_REPO }}"
+
+    - name: Importing custom attack signatures
+      with_fileglob:
+      - "{{ custom_signature_folder }}*.xml"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/asm/tasks/update-signatures"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: POST
+        body_format: json
+        body:
+          isBase64: "true"
+          isUserDefined: "true"
+          file: "{{ lookup('file', '{{ item }}') | b64encode }}"
+        return_content: yes
+        status_code: 200, 201
+      delegate_to: localhost
+      register: installtaskid
+
+    - name: Get task status for custom attack signatures
+      with_fileglob:
+      - "{{ custom_signature_folder }}*.xml"
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/asm/tasks/update-signatures/{{ installtaskid.results[0].json.id }}"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: GET
+        return_content: yes
+        status_code: 200, 201
+      register: installtaskstatus
+      until: installtaskstatus.json.status == 'COMPLETED'
+      retries: 180 # retry X times  
+      delay: 1 # pause for X sec b/w each call

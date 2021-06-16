@@ -1,0 +1,28 @@
+---
+- name: ATC DO Deploy
+  hosts: ansiblegroup
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+
+    - name: Build DO declaration
+      template:
+        src: "{{ playbook_dir }}/templates/do.j2"
+        dest: "{{ playbook_dir }}/templates/do-{{ inventory_hostname }}.json"
+
+    - name: Deploy the DO service configuration
+      include_role:
+        name: f5devcentral.atc_deploy
+      vars:
+        atc_service: Device
+        atc_method: POST
+        atc_declaration_file: "{{ playbook_dir }}/templates/do-{{ inventory_hostname }}.json"

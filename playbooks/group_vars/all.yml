@@ -1,0 +1,85 @@
+---
+##as3.yml and do.yml atc_deploy role vars##
+atc_retries: 20
+
+##import_attack_signature_version.yml and install_ltm_config.yml and import_custom_asm_signatures.yml vars##
+#base local directory for ansible to clone rep files into
+GIT_REPO_BASE_PATH: "{{ playbook_dir }}/files/git"
+
+##import_attack_signature_version.yml and import_custom_asm_signatures.yml vars##
+SIGNATURE_GIT_REPO:    
+  - name: "f5PublicConfigCommon" 
+    url: "git@github.com:megamattzilla/f5PublicConfigCommon"
+    #Path to SSH key created by concord flow
+    key: "{{ lookup('file','/workspace/{{ SSH_KEY_PATH }}') }}"
+    #specific directory within base path to place this repo
+    git_repo_path: "{{ GIT_REPO_BASE_PATH }}/f5PublicConfigCommon"
+    #version tag or branch to clone. you can also clone main
+    version: "1.0.2"
+#Path to .im file to import in the SIGNATURE_GIT_REPO
+im_file_path: "{{GIT_REPO_BASE_PATH }}/f5PublicConfigCommon/wafSignatures/ASM-AttackSignatures_20210412_150808.im"
+
+##import_custom_asm_signatures.yml vars##
+custom_signature_folder: "{{GIT_REPO_BASE_PATH }}/f5PublicConfigCommon/wafCustomSignatures/"
+
+##install_ltm_config.yml vars##
+GIT_REPO:    
+  - name: "f5PublicConfigCommon" 
+    url: "git@github.com:megamattzilla/f5PublicConfigCommon.git"
+    #Path to SSH key created by concord flow
+    key: "{{ lookup('file','/workspace/{{ SSH_KEY_PATH }}') }}"
+    #specific directory within base path to place this repo
+    git_repo_path: "{{ GIT_REPO_BASE_PATH }}/f5PublicConfigCommon"
+    #version tag or branch to clone. you can also clone main
+    version: "1.0.2"
+    #Optional: Username to use for git push operations
+    git_username: "git_user"
+    #Optional: Email address to use for git push operations
+    git_email: "exampleuser@example.com"
+    #Optional: Commit message for git push operations
+    git_msg: "testing asm policy update"
+#Multiple Repositories can be loaded by adding another - name: reference with all parameters above. 
+
+##as3.yml global vars##
+#AS3 Schema Version to use
+AS3_SCHEMA_VERSION: "3.26.0"
+#AS3 Parameters
+APP_NAME: "Shared"
+TENANT_NAME: "Common"
+
+##install_atc_rpm.yml vars##
+#Path to AnO toolchain .rpms in ansible git repo. Manually placed into repo for now 
+as3_path: "files/f5-appsvcs-3.28.0-3.noarch.rpm"
+do_path: "files/f5-declarative-onboarding-1.21.0-3.noarch.rpm"
+ts_path: "files/f5-telemetry-1.20.0-3.noarch.rpm"
+
+##do.yml vars##
+##Assuming 3 NIC Big-IP. Some adjustments needed for other environments. 
+DO_SCHEMA_VERSION: "1.19.0"
+GUI_IDLE_TIMEOUT: 86400
+NTP_SERVERS: 
+  - server: "pool.ntp.org"
+  - server: "north-america.pool.ntp.org"
+  - server: "3.north-america.pool.ntp.org"
+ntp_timezone: "UTC"
+BIGIQ_ADDRESS: "big-iq.example"
+BIGIQ_USER: "example_user"
+BIGIQ_LICENSE_POOL_NAME: "MSP-LOADV4-LIC"
+BIGIQ_SKU_KEYWORD: "F5-BIG-MSP-BT-1G"
+BIGIQ_REACHABLE: false
+#Replace with desired hypervisor
+BIGIP_HYPERVISOR: "azure"
+BIGIQ_UNIT_OF_MEASURE: "yearly"
+#Replace with CIDR suffix for EXT and INT Big-IP Interfaces. 
+CIDR_SUBNET_SUFFIX_EXT: 24
+CIDR_SUBNET_SUFFIX_INT: 24
+PLATFORM_MODULES: 
+  - name: "ltm"
+    provision: "nominal"
+  - name: "asm"
+    provision: "nominal"
+  - name: "afm"
+    provision: "nominal"
+ADMIN_USERS:
+  - id: "exampleuser"
+    key: "replace with SSH pub key"

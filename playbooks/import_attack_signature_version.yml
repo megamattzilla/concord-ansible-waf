@@ -1,0 +1,154 @@
+- name: Import ASM Signatures .IM file
+  hosts: ansiblegroup
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Pull Git Repo
+      run_once: true
+      include_role:
+        name: ansible-git
+        tasks_from: pull      
+      with_items: "{{ SIGNATURE_GIT_REPO }}"
+
+    - stat:
+        path: "{{ im_file_path }}"
+      register: filestat
+
+    - name: Fetch Currently Installed signature version 
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/asm-attack-signatures/installations?$select=status,id,updateFileReference"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: GET
+        return_content: yes
+        status_code: 200, 201
+      register: installedfilereference
+
+    - set_fact: installedfile_filtered="{{ installedfilereference.results[0].json | json_query(\"items[?status=='install-complete'].updateFileReference.link\") | join(" ") }}"
+
+    - name: Check Currently Installed signature version
+      with_fileglob:
+      - "{{ im_file_path }}"
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}{{ installedfile_filtered.split(\"localhost\")[1] }}"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: GET
+        return_content: yes
+        status_code: 200, 201
+      register: installedfile
+
+    - debug:
+        msg: "{{ data.mgmtaddress }} installed version {{ installedfile.results[0].json.filename }}"
+
+    - name: Upload custom attack signature version file 
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/file-transfer/uploads/{{ item | basename }}"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: POST
+        headers:
+          Content-Type: "application/octet-stream"
+          Content-Range: "0-{{ filestat.stat.size -1 }}/{{ filestat.stat.size }}"
+        return_content: yes
+        src: "{{ item }}"
+        status_code: 200, 201
+      delegate_to: localhost
+      when: 
+        - 'installedfile.results[0].json.filename not in item'
+
+    - name: Create custom attack signature version file 
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/update-files"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: POST
+        body_format: json
+        body:
+          filename: '{{ item | basename }}'
+        return_content: yes
+        status_code: 200, 201
+      register: updateid
+      when: 
+        - 'installedfile.results[0].json.filename not in item'
+
+    - name: Create new task for custom attack signature version
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/asm-attack-signatures/installations"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: POST
+        body_format: json
+        body:
+          updateFileReference:
+            link: "https://localhost/mgmt/tm/live-update/asm-attack-signatures/update-files/{{ updateid.results[0].json.id }}"
+        return_content: yes
+        status_code: 200, 201
+      register: createtaskid
+      when: 
+        - 'installedfile.results[0].json.filename not in item'
+
+    - name: Install task for custom attack signature version
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/asm-attack-signatures/installations/{{ createtaskid.results[0].json.id }}"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: PATCH
+        body_format: json
+        body:
+          status: install
+        return_content: yes
+        status_code: 200, 201
+      register: installtaskid
+      when: 
+        - 'installedfile.results[0].json.filename not in item'
+
+    - name: Get task status for custom attack signature version
+      with_fileglob:
+      - "{{ im_file_path }}"  
+      uri:
+        url: "https://{{ data.mgmtaddress }}:{{ port | default('443')}}/mgmt/tm/live-update/asm-attack-signatures/installations/{{ installtaskid.results[0].json.id }}"
+        user: admin
+        password: "{{ f5adminpassword }}"
+        validate_certs: false
+        force_basic_auth: yes
+        method: GET
+        return_content: yes
+        status_code: 200, 201
+      register: installtaskstatus
+      until: installtaskstatus.json.status == 'install-complete'
+      retries: 180 # retry X times  
+      delay: 2 # pause for X sec b/w each call
+      when: 
+        - 'installedfile.results[0].json.filename not in item'

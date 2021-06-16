@@ -1,0 +1,150 @@
+configuration:
+  arguments:
+    #Set ansibleplaybook variable to dummy value
+    ansibleplaybook: "please_choose_playbook"
+  dependencies:
+    #Need to specify for ansible task: https://concord.walmartlabs.com/docs/plugins/ansible.html
+    - mvn://com.walmartlabs.concord.plugins.basic:ansible-tasks:1.79.0
+
+#Profiles allow you to reuse a flow but substitute different variables (ansible playbooks for our example) at process runtime. 
+profiles:
+  as3Deploy:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/as3.yml"
+  doDeploy:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/do.yml"
+  atcInstall:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/install_atc_rpm.yml"
+  all:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/all.yml"
+  import_ltm:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/import_ltm_config.yml"
+  import_attack_sig_version:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/import_attack_signature_version.yml"
+  import_custom_sig_version:
+    configuration:
+      arguments:
+        ansibleplaybook: "playbooks/import_custom_asm_signatures.yml"
+
+flows:
+  #Name of Flow visible in Concord. This flow is specific for import automation.
+  import_playbooks:
+      #Export key from secrets vault to a file. Syntax is: ('Organization', 'SSH key name in secrets vault', 'required store password' )
+    - expr: ${crypto.exportKeyAsFile('Default', 'concord-config-key3', 'Bestpassword1')}
+      out: myKeys
+    #Display SSH key file paths for troubleshooting use. 
+    #- log: "Public: ${myKeys.public}"
+    #- log: "Private: ${myKeys.private}"
+    #Return inventory data for ALL hosts
+    - log: "Inventory: ${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequery2')}"
+    #Return inventory data for specific hosts
+    #- log: "Inventory: ${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequeryparam', { 'data': { 'mgmtaddress': '10.10.10.6' } } )}"
+    - task: ansible
+      in:
+        auth:
+          privateKey: 
+            path: "${myKeys.private}"
+        config:
+          defaults:
+            host_key_checking: false
+          persistent_connection:
+            command_timeout: 420
+        #Enabling log filtering helps to remove sensitive secrets from the concord process log
+        enableLogFiltering: true
+        #Custom Docker File to run ansible from. This file uses ansible 2.9.20.
+        dockerImage: "megamattzilla/f5_ansible:1.1"
+        #Name of ansible playbook to call. Note: Ansible playbook could call other ansible playbooks. 
+        playbook: "${ansibleplaybook}"
+        #Download external ansible role atc_deploy. Its an easy way to have ansible push a DO/AS3 file. 
+        #ATC_deploy role now included in ansible playbook role directory
+        #roles:
+            #Role used to push DO and AS3 declarations
+        #  - src: "https://github.com/f5devcentral/ansible-role-f5_atc_deploy_declaration.git"
+        #    name: "f5devcentral.atc_deploy"
+        #Verbosity controls ansible logging level. 5 is quite verbose and useful for troubleshooting. 
+        verbose: 5
+        #For testing purposes using simple inventory for now. We can call inventory objects later: https://concord.walmartlabs.com/docs/plugins/inventory.html
+        inventory: "${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequery2')}"
+        #inventory: "${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequeryparam', { 'data': { 'mgmtaddress': '10.10.10.6' } } )}"
+        #Passing extra vars to ansible playbook run.
+        extraVars:
+          #Lookup F5 admin password from Concord secrets vault: https://concord.walmartlabs.com/docs/plugins/crypto.html
+          f5adminpassword: "${crypto.exportAsString('Default', 'f5adminpassword', null)}"
+          bigiq_adminpassword: "${crypto.exportAsString('Default', 'bigiq_adminpassword', null)}"
+          #AS3 Vars
+          #Lookup github personal access token for AS3 to access private repo
+          As3Token: "${crypto.exportAsString('Default', 'githubAs3Token', null)}"
+          #Set the AS3 ID to the Concord unique process ID
+          AS3_ID: "${txId}"
+          #Pass SSH key path to ansible variable
+          SSH_KEY_PATH: "${myKeys.private}"
+  
+  #Name of Flow visible in Concord. This flow is specific for export automation.
+  export_playbooks:
+    #Form reference
+    - form: ExportSelection
+    - log: "exportType= ${ExportSelection.exportType}"
+    - log: "versionTagCommon= ${ExportSelection.versionTagCommon}"
+    - log: "versionTagTenantA= ${ExportSelection.versionTagTenantA}"
+    #Export key from secrets vault to a file. Syntax is: ('Organization', 'SSH key name in secrets vault', 'required store password' )
+    - expr: ${crypto.exportKeyAsFile('Default', 'concord-config-key3', 'Bestpassword1')}
+      out: myKeys
+    #Display SSH key file paths for troubleshooting use. 
+    #- log: "Public: ${myKeys.public}"
+    #- log: "Private: ${myKeys.private}"
+    #Return inventory data for ALL hosts
+    #- log: "Inventory: ${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequery2')}"
+    #Return inventory data for specific hosts
+    - log: "Inventory: ${inventory.ansible('Default', 'ansibleinv', 'gold', 'ansiblequeryparam', { 'data': { 'mgmtaddress': '10.10.10.5' } } )}"
+    - task: ansible
+      in:
+        auth:
+          privateKey: 
+            path: "${myKeys.private}"
+        config:
+          defaults:
+            host_key_checking: false
+          persistent_connection:
+            command_timeout: 420
+        #Enabling log filtering helps to remove sensitive secrets from the concord process log
+        enableLogFiltering: true
+        #Custom Docker File to run ansible from. This file uses ansible 2.9.20.
+        dockerImage: "megamattzilla/f5_ansible:1.1"
+        #Name of ansible playbook to call. Note: Ansible playbook could call other ansible playbooks. 
+        playbook: "playbooks/export_config.yml"
+        #Tags to execute at runtime. This controlls what Big-IP config would be exported. 
+        tags: "${ExportSelection.exportType}"
+        #Verbosity controls ansible logging level. 5 is quite verbose and useful for troubleshooting. 
+        verbose: 4
+        #For testing purposes using simple inventory for now. We can call inventory objects later: https://concord.walmartlabs.com/docs/plugins/inventory.html
+        #inventory: "${inventory.ansible('Default', 'ansibleinv', 'ansiblegroup', 'ansiblequery2')}"
+        inventory: "${inventory.ansible('Default', 'ansibleinv', 'gold', 'ansiblequeryparam', { 'data': { 'mgmtaddress': '10.10.10.5' } } )}"
+        #Passing extra vars to ansible playbook run.
+        extraVars:
+          #Lookup F5 admin password from Concord secrets vault: https://concord.walmartlabs.com/docs/plugins/crypto.html
+          f5adminpassword: "${crypto.exportAsString('Default', 'f5adminpassword', null)}"
+          bigiq_adminpassword: "${crypto.exportAsString('Default', 'bigiq_adminpassword', null)}"
+          #Pass SSH key path to ansible variable
+          SSH_KEY_PATH: "${myKeys.private}"
+          #git tag string passed to ansible. naming syntax needs to be ansibleversionTag<Git Repo Name> 
+          versionTag-f5ConfigCommon: "${ExportSelection.versionTagCommon}"
+          versionTag-f5ConfigTenantA: "${ExportSelection.versionTagTenantA}"
+
+
+#User-supplied input form settings. Example below is for two Git Repos to store F5 configuration. A Common repo and TenantA with specific configuration for a given tenant. 
+forms:
+  ExportSelection:
+  - exportType: { label: "Export Type", type: "string+", allow: ["waf_policy","iRule","waf_signature","dos_profile","bot_profile","security_log"], search: true }
+  - versionTagCommon: { label: "Git Tag Common", type: "string?" , placeholder: "1.0.1" }
+  - versionTagTenantA: { label: "Git Tag TenantA", type: "string?" , placeholder: "2.0.1" }

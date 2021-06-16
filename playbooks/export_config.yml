@@ -1,0 +1,61 @@
+- name: Export BIG-IP Configurations to Git Repositories 
+  hosts: gold
+  connection: local
+  vars:
+    provider:
+      server: "{{ data.mgmtaddress }}"
+      user: admin
+      password: "{{ f5adminpassword }}"
+      validate_certs: false
+      server_port: 443
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    #Git clone all git repos as specified by GIT_REPO variable in host vars.
+    - name: Pull Git Repositories 
+      run_once: true
+      include_role:
+        name: ansible-git
+        tasks_from: pull
+        apply:
+          tags: always      
+      with_items: "{{ GIT_REPO }}"
+      tags:
+      - always
+
+    #Export ASM policies as specified by security_policies variable in group vars. 
+    - name: Export WAF policies inline
+      with_items: "{{ security_policies }}"
+      bigip_asm_policy_fetch:
+        name: "{{ item.name }}"
+        inline: yes
+        force: yes
+        partition: "{{ item.partition }}"
+        provider: "{{ provider }}"
+      register: ASM_Policy
+      delegate_to: localhost
+      tags:
+      - waf_policy
+
+    #Copy inline ASM policy data to a .xml file. This works around the 1MB file size limit in BZ 1390. After BZ is fixed we can export as .xml and skip the copy operation. 
+    - ansible.builtin.copy:
+        content: "{{ item.inline_policy }}"
+        #Reuse variable dictionary security_policies to move each ASM policy to the correct repository name 
+        dest: "{{ GIT_REPO_BASE_PATH }}/{{ (security_policies | selectattr('name','defined') | selectattr('name','equalto', item.name) | list)[0]['repo'] }}/wafPolicies/{{ item.name + '.xml' }}"
+      with_items: "{{ ASM_Policy.results }}"
+      tags:
+      - waf_policy
+
+    #Push exported ASM policies to the git repositories  using the tag value(s) specified in variable (concord form). 
+    - name: git push
+      vars:
+        git_remove_local: true
+      include_role:
+        name: ansible-git
+        tasks_from: push
+        apply:
+          tags: always
+      with_items: "{{ GIT_REPO }}"
+      tags:
+      - always

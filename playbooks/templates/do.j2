@@ -1,0 +1,130 @@
+{
+    "schemaVersion": "{{ DO_SCHEMA_VERSION }}",
+    "class": "Device",
+    "async": true,
+    "label": "my BIG-IP declaration for declarative onboarding",
+    "Common": {
+        "class": "Tenant",
+        "mySystem": {
+            "class": "System",
+            "hostname": "{{ inventory_hostname }}.local",
+            "autoCheck": true,
+            "guiAuditLog": true,
+            "mcpAuditLog": "enable",
+            "tmshAuditLog": true,
+            "autoPhonehome": false
+        },
+        "myHTTPD": {
+            "class": "HTTPD",
+            "authPamIdleTimeout": 86400
+        },
+        "myNTP": {
+            "class": "NTP",
+            "servers": [
+                {% for ntp_server in NTP_SERVERS %}
+                "{{ ntp_server.server }}"{{ "," if not loop.last else "" }}
+                {% endfor %}
+            ],
+            "timezone": "{{ ntp_timezone }}"
+        },
+        "myLicense": {
+            "class": "License",
+            "overwrite": true,
+            "licenseType": "licensePool",
+            "bigIqHost": "{{ BIGIQ_ADDRESS }}",
+            "bigIqUsername": "{{ BIGIQ_USER }}",
+            "bigIqPassword": "{{ bigiq_adminpassword }}",
+            "licensePool": "{{ BIGIQ_LICENSE_POOL_NAME }}",
+            "revokeFrom": "{{ BIGIQ_LICENSE_POOL_NAME }}",
+            "skuKeyword1": "{{ BIGIQ_SKU_KEYWORD }}",
+            "reachable": false,
+            "hypervisor": "{{ BIGIP_HYPERVISOR }}",
+            "unitOfMeasure": "{{ BIGIQ_UNIT_OF_MEASURE }}",
+            "tenant": "{{ inventory_hostname }}"
+            },
+        "admin": {
+            "class": "User",
+            "userType": "regular",
+            "password": "{{ f5adminpassword }}",
+            "keys": [
+                {% for adminuser in ADMIN_USERS %}
+                "{{ adminuser.key }}"{{ "," if not loop.last else "" }}
+                    {% endfor %}
+            ],
+            "shell": "bash"
+        },
+        {% for adminuser in ADMIN_USERS %}
+        "{{ adminuser.id }}": {
+            "class": "User",
+            "userType": "regular",
+            "keys": ["{{ adminuser.key }}"],
+            "partitionAccess": {
+                "all-partitions": {
+                    "role": "admin"
+                }
+            },
+            "shell": "bash"
+        },
+        {% endfor %}
+        "myProvisioning": {
+            {% for module in PLATFORM_MODULES %}
+            "{{ module.name }}": "{{ module.provision }}",
+            {% endfor %}
+            "class": "Provision"
+        },
+        "external": {
+            "class": "VLAN",
+            "mtu": 1500,
+            "interfaces": [
+                {
+                "name": "1.2",
+                "tagged": false
+                }
+            ],
+            "cmpHash": "src-ip"
+        },
+        "internal": {
+            "class": "VLAN",
+            "mtu": 1500,
+            "interfaces": [
+                {
+                "name": "1.1",
+                "tagged": false
+                }
+            ],
+            "cmpHash": "src-ip"
+        },
+        "external-self": {
+            "class": "SelfIp",
+            "address": "{{ data.ipv4.extaddress }}/{{ CIDR_SUBNET_SUFFIX_EXT }}",
+            "vlan": "external",
+            "trafficGroup": "traffic-group-local-only"
+        },
+        "internal-self": {
+            "class": "SelfIp",
+            "address": "{{ data.ipv4.intaddress }}/{{ CIDR_SUBNET_SUFFIX_INT }}",
+            "vlan": "internal",
+            "allowService": "default",
+            "trafficGroup": "traffic-group-local-only"
+        },
+        "default": {
+            "class": "ManagementRoute",
+            "gw": "{{ data.ipv4.gateway }}",
+            "network": "default",
+            "mtu": 1500
+        },
+        "dbvars": {
+            "class": "DbVariables",
+            "setup.run": false,
+            "kernel.pti": "disable",
+            "provision.1nicautoconfig": "disable",
+            "provision.extramb": 2048,
+            "provision.tomcat.extramb": 20,
+            "restjavad.useextramb": true,
+            "ui.advisory.enabled": true,
+            "ui.advisory.color": "red",
+            "ui.system.preferences.recordsperscreen": "250",
+            "ui.advisory.text": "{{ inventory_hostname }} - ext_ip:{{ data.ipv4.extaddress }} int_ip:{{ data.ipv4.intaddress }} - Managed by Automation!"
+        }
+    }
+}
