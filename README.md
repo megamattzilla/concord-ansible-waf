@@ -2,6 +2,7 @@
 Collection of Ansible playbooks to onboard common F5 WAF Configurations.
 
 Optionally uses Concord to run ansible tasks: https://concord.walmartlabs.com/docs/getting-started/installation.html 
+![Concord Task Status](https://raw.githubusercontent.com/megamattzilla/f5PublicConfigCommon/main/concord.png)
 
 The included concord.yml file will instruct concord to run the associated ansible playbook to one or more Big-IP instances. 
 
