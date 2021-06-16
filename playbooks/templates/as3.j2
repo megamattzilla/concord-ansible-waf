@@ -1,0 +1,250 @@
+{
+    "class": "AS3",
+    "action": "deploy",
+    "persist": true,
+    "loglevel": "debug",
+    "declaration": {
+        "class": "ADC",
+        "schemaVersion": "{{ AS3_SCHEMA_VERSION }}",
+        "id": "DYNAMIC_{{ AS3_ID }}",
+        "label": "DYNAMIC_{{ APP_NAME }}",
+        "remark": "DYNAMIC_{{ APP_NAME }}",
+        "{{ TENANT_NAME }}": {
+            "class": "Tenant",
+            "{{ APP_NAME }}": {
+
+{% if ADDRESS_DISCOVERY_VM is defined %}
+{% for vm_backend in ADDRESS_DISCOVERY_VM %}
+                "{{ vm_backend.backend_nodes_name }}": {
+                    "class": "Address_Discovery",
+                    "addressDiscovery": "{{ ADDRESS_DISCOVERY_addressDiscovery }}",
+                    "updateInterval": {{ ADDRESS_DISCOVERY_updateInterval }},
+                    "tagKey": "{{ vm_backend.tagKey }}",
+                    "tagValue": "{{ vm_backend.tagValue }}",
+                    "addressRealm": "private",
+                    "resourceGroup": "{{ vm_backend.resourceGroup }}",
+                    "subscriptionId": "{{ AZURE_SUBSCRIPTION_ID }}",
+                    "directoryId": "{{ AZURE_TENANT_ID }}",
+                    "applicationId": "{{ AZURE_CLIENT_ID }}",
+                    "apiAccessKey": "{{ AZURE_API_SECRET }}",
+                    "shareNodes": {{ ADDRESS_DISCOVERY_shareNodes }},
+                    "undetectableAction": "disable",
+                    "credentialUpdate": {{ ADDRESS_DISCOVERY_credentialUpdate }}
+                },
+{% endfor %}
+{% endif %}
+
+{% for mon in HEALTH_MONITORS %}
+            "{{ mon.name }}": {
+                "class": "Monitor",
+                "description": "{{ mon.name }}",
+                "monitorType": "{{ mon.monitorType }}",
+                "targetPort": {{ mon.targetPort }},
+                "send": "{{ health_check_send }}",
+                "receive": "{{ health_check_receive }}",
+                "interval": {{ health_check_interval }},
+                "timeout": {{ health_check_timeout }}
+            },
+{% endfor %}
+
+{% for pool in BACKEND_POOLS_DYNAMIC %}
+            "{{ pool.name }}": {
+                "class": "Pool",
+                "remark": "{{ pool.remark }}",
+                "monitors": [
+                    { "{{ pool.monitorType }}": "{{ pool.monitor }}" }
+                ],
+                "members": [
+                    {
+                        "shareNodes": true,
+                        "servicePort": {{ pool.servicePort }},
+{% if pool.backend_pool_type == "sharedpool" %}
+                            "addressDiscovery": 
+                                { "use": "{{ pool.backend_pool_name }}" } 
+{% endif %}
+{% if pool.backend_pool_type == "fqdn" %}
+                            "addressDiscovery": "fqdn",
+                            "autoPopulate": true,
+                            "hostname": "{{ pool.fqdn }}"
+{% endif %}
+{% if pool.backend_pool_type == "static" %}
+                            "serverAddresses": [
+{% for item in pool.serverAddresses %}
+                                "{{ item }}"{{ "," if not loop.last else "" }}
+{% endfor %}
+                            ]
+{% endif %}
+                    }
+                ]
+            },
+{% endfor %}
+
+{% for virtual in VIRTUALS %}
+                    "{{ virtual.name }}": {
+{% if virtual.remark|length %}
+                            "remark": "{{ virtual.remark }}",
+{% endif %}
+{% if virtual.pool|length %}
+                            "pool": "{{ virtual.pool }}",
+{% endif %}
+{% if virtual.type == "Service_HTTPS" %}
+                            "clientTLS": "{{ virtual.clientTLS }}",
+                            "serverTLS": "{{ virtual.name }}-clientssl",
+{% endif %}
+{% if virtual.profileBotDefense|length %}
+                            "profileBotDefense": { "bigip": "{{ virtual.profileBotDefense }}" },
+ {% endif %}
+{% if virtual.profileDOS|length %}
+                            "profileDOS": { "bigip": "{{ virtual.profileDOS }}" },
+{% endif %}
+{% if virtual.policyWAF|length %}
+                            "policyWAF": { "use": "{{ virtual.policyWAF }}" },
+{% endif %}
+{% if virtual.securityLogProfiles is defined %}
+                            "securityLogProfiles" : [ 
+{% for item in virtual.securityLogProfiles  %}
+                                   { "bigip": "{{ item }}"}{{ "," if not loop.last else "" }}
+{% endfor %}
+                            ],
+{% endif %}
+{% if virtual.iRules|length %}
+                            "iRules": [
+                                 
+{% for item in virtual.iRules  %}
+                                   { "use": "{{ item }}"}{{ "," if not loop.last else "" }}
+{% endfor %}                      
+                            ],
+{% endif %}
+                        "enable": {{ virtual.enable }},
+                        "virtualPort": {{ virtual.port }},
+                        "profileHTTP": { "use": "{{ virtual.profileHTTP }}" },
+                        "profileTCP": { "use": "{{ virtual.profileTCP }}" },
+                        "snat": "auto",
+                        "layer4": "tcp",
+                        "redirect80": false,
+                        "persistenceMethods": [],
+                        "virtualAddresses": [ "0.0.0.0" ],
+                        "translateServerAddress": true,
+                        "shareAddresses": true,
+                        "translateServerPort": true,
+                        "class": "{{ virtual.type }}"
+                    },
+{% if virtual.type == "Service_HTTPS" %}
+                        "{{ virtual.name }}-clientssl": {
+                            "certificates": [                    
+{% for item in virtual.serverTLS  %}                                
+                                  {
+                                   {% if ( (loop.first) and 
+                                   (loop.length > 1) ) %}
+                                    "enabled": false,
+                                    {% endif %}
+                                   "certificate": "{{ item }}"}{{ "," if not loop.last else "" }}
+{% endfor %}
+                            ],
+                            "ciphers": "{{ CIPHERS }}",
+                            "namingScheme": "certificate",
+                            "requireSNI": {{ virtual.requireSNI }},
+                            "class": "TLS_Server"
+                        },
+{% endif %}
+{% endfor %}
+
+{% for cert in CERTIFICATES %}
+                    "{{ cert.name }}": {
+                        "class": "Certificate",
+                        "certificate": "{{ cert.cert }}",
+                        "privateKey": "{{ cert.key }}",
+{% if cert.ciphertext|length %}
+                        "passphrase": {
+                        "ciphertext": "{{ cert.ciphertext }}",
+                        "protected": "{{ cert.protected }}"
+                        },
+{% endif %}                       
+                        "remark": "{{ cert.name }}"
+                    },
+{% endfor %}
+
+{% for irule in IRULES %}
+                    "{{ irule.name }}": {
+                        "class": "iRule",
+                        "iRule": {
+                            "url": "{{ irule.url }}"
+                          },
+                        "label": "{{ irule.name }}"
+                    },
+{% endfor %}
+
+{% for policy in WAF_POLICIES %}
+                    "{{ policy.name }}": {
+                        "class": "WAF_Policy",
+                        "url": "{{ policy.url }}",
+                        "ignoreChanges": false
+                    },
+{% endfor %}
+
+{% for datagroup in DATAGROUPS %}
+                    "{{ datagroup.name }}": {
+                        "class": "Data_Group",
+                        "storageType": "external",
+                        "keyDataType": "{{ datagroup.keyDataType }}",
+                        "externalFilePath": "{{ datagroup.url }}",
+                        "ignoreChanges": true,
+                        "separator": "{{ datagroup.delimiter }}",
+                        "label": "{{ datagroup.name }}"
+                    },
+{% endfor %}
+                "tenantA-default-tcpserver-profile": {
+                    "class": "TCP_Profile"
+                },
+                "tenantA-default-tcp-profile": {
+                    "class": "TCP_Profile",
+                    "idleTimeout": 180,
+                    "keepAliveInterval": 86400,
+                    "slowStart": false
+                },
+                "tenantA-default-http-profile": {
+                    "class": "HTTP_Profile",
+                    "hstsIncludeSubdomains": false,
+                    "maxHeaderCount": 256,
+                    "maxHeaderSize": 65536,
+                    "otherXFF": [
+                        "custom_xff",
+                        "client-ip"
+                    ],
+                    "proxyType": "reverse",
+                    "serverHeaderValue": "none",
+                    "trustXFF": true
+                },
+                "certificate_default": {
+                    "certificate": {
+                        "bigip": "/Common/default.crt"
+                    },
+                    "class": "Certificate"
+                },
+                "tenantA-default-ssl-profile": {
+                    "certificates": [
+                        {
+                            "certificate": "certificate_default"
+                        }
+                    ],
+                    "ciphers": "{{ CIPHERS }}",
+                    "class": "TLS_Server"
+                },
+                "vips-sni-default-clientssl": {
+                    "certificates": [
+                        {
+                            "certificate": "certificate_default"
+                        }
+                    ],
+                    "ciphers": "{{ CIPHERS }}",
+                    "class": "TLS_Server"
+                },
+                "tenantA-default-serverssl-profile": {
+                    "class": "TLS_Client"
+                },
+                "class": "Application",
+                "template": "shared"
+            }
+        }
+    }
+}
