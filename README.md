@@ -1,5 +1,5 @@
 ## Overview
-Collection of Ansible playbooks to onboard common F5 WAF Configurations.
+Collection of Ansible playbooks to onboard common F5 WAF Configurations. 
 
 Optionally uses Concord to run ansible tasks: https://concord.walmartlabs.com/docs/getting-started/installation.html 
 ![Concord Task Status](https://github.com/megamattzilla/concord-ansible-waf/raw/main/concord.png)
@@ -7,6 +7,8 @@ Optionally uses Concord to run ansible tasks: https://concord.walmartlabs.com/do
 The included concord.yml file will instruct concord to run the associated ansible playbook to one or more Big-IP instances. 
 
 The ansible playbooks can be run without concord, but you would need to supply the proper variables and ansible flags which concord is doing for us. Concord just runs `ansible-playbook` command under the hood with appropriate flags so 100% of the ansible functionality is possible without concord. 
+
+Ansible will import a number of Big-IP configuration items which will be hosted in a git repo. For demo purposes, the following repo is available for reference: https://github.com/megamattzilla/f5PublicConfigCommon   
 
 **Current Import Playbooks:** 
 ```bash 
@@ -24,7 +26,8 @@ all.yml #Run all import playbooks above in order.
 export_config.yml #Exports WAF (ASM) policies to github main branch and version tag.
 ```
 **Coming soon:**
-```  
+```
+non-concord ansible examples  
 playbook to export additional F5 config to git repo
 playbook to promote repo branch to new tag version
  ```
