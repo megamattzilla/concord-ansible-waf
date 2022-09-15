@@ -1,0 +1,2 @@
+[ansiblegroup]
+bigip01 bigip_mgmt=192.168.1.245
